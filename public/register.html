@@ -1,0 +1,84 @@
+<!DOCTYPE html>  
+<html lang="en">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
+    <title>Register</title>  
+    <link rel="stylesheet" href="style.css">  
+</head>  
+<body>  
+    <div class="container">  
+        <h2>Register</h2>  
+        <form id="registerForm">  
+            <input type="text" id="username" placeholder="Username" required />  
+            <input type="email" id="email" placeholder="Email" required />  
+            <input type="password" id="password" placeholder="Password" required />  
+            <button type="submit">Register</button>  
+        </form>  
+        <div id="message"></div>  
+        <p>Already have an account? <a href="login.html">Login</a></p>  
+    </div>  
+
+    <script>  
+        // Auth Service untuk menangani registrasi  
+        const authService = {  
+            async register(userData) {  
+                const response = await fetch("/api/auth/register", {  
+                    method: "POST",  
+                    headers: { "Content-Type": "application/json" },  
+                    body: JSON.stringify(userData)  
+                });  
+                return await response.json();  
+            }  
+        };  
+
+        // UI Service untuk menangani tampilan  
+        const uiService = {  
+            showMessage(message, type) {  
+                const messageDiv = document.getElementById("message");  
+                messageDiv.textContent = message;  
+                messageDiv.className = type;  
+            }  
+        };  
+
+        // Register Handler  
+        class RegisterHandler {  
+            constructor(form) {  
+                this.form = form;  
+                this.initialize();  
+            }  
+
+            initialize() {  
+                this.form.addEventListener("submit", async (e) => {  
+                    e.preventDefault();  
+                    await this.handleRegister();  
+                });  
+            }  
+
+            async handleRegister() {  
+                try {  
+                    const userData = {  
+                        username: document.getElementById("username").value,  
+                        email: document.getElementById("email").value,  
+                        password: document.getElementById("password").value  
+                    };  
+
+                    const data = await authService.register(userData);  
+
+                    if (data.message) {  
+                        uiService.showMessage(data.message, "success");  
+                        window.location.href = "profile.html";  
+                    } else {  
+                        uiService.showMessage(data.error, "error");  
+                    }  
+                } catch (err) {  
+                    uiService.showMessage("An error occurred", "error");  
+                }  
+            }  
+        }  
+
+        // Initialize register handler  
+        new RegisterHandler(document.getElementById("registerForm"));  
+    </script>  
+</body>  
+</html>

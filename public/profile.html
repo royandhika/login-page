@@ -1,0 +1,133 @@
+<!DOCTYPE html>  
+<html lang="en">  
+<head>  
+    <meta charset="UTF-8">  
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
+    <title>Profile</title>  
+    <link rel="stylesheet" href="style.css">  
+</head>  
+<body>  
+    <div class="container">  
+        <h2>Welcome to Your Profile</h2>  
+        <p id="welcomeMessage">Loading...</p>  
+        <a href="login.html">Logout</a>  
+    </div>  
+
+    <script>  
+        // Auth Service untuk menangani operasi autentikasi  
+        const authService = {  
+            async validateToken(token) {  
+                try {  
+                    const response = await fetch("/api/auth/profile", {  
+                        method: "GET",  
+                        headers: {  
+                            Authorization: `Bearer ${token}`  
+                        }  
+                    });  
+                    if (!response.ok) throw new Error('Invalid token');  
+                    return await response.json();  
+                } catch (error) {  
+                    console.error("Validate token error:", error);  
+                    throw error;  
+                }  
+            },  
+
+            async refreshToken() {  
+                try {  
+                    const response = await fetch('/api/auth/refresh', {  
+                        method: 'POST',  
+                        credentials: 'include' // Penting untuk mengirim cookie  
+                    });  
+                    if (!response.ok) throw new Error('Refresh failed');  
+                    const data = await response.json();  
+                    return data.accessToken;  
+                } catch (error) {  
+                    console.error("Refresh token error:", error);  
+                    throw error;  
+                }  
+            },  
+
+            async logout() {  
+                try {  
+                    await fetch('/api/auth/logout', {  
+                        method: 'POST',  
+                        credentials: 'include'  
+                    });  
+                    sessionStorage.removeItem("accessToken");  
+                    window.location.href = "login.html";  
+                } catch (error) {  
+                    console.error("Logout error:", error);  
+                    throw error;  
+                }  
+            }  
+        };  
+
+        // Profile Manager  
+        class ProfileManager {  
+            constructor() {  
+                this.initialize();  
+                this.setupLogout();  
+            }  
+
+            async initialize() {  
+                try {  
+                    // 1. Periksa accessToken di sessionStorage  
+                    let token = sessionStorage.getItem("accessToken");  
+                    
+                    if (token) {  
+                        // 2. Jika ada token, coba validate  
+                        try {  
+                            const userData = await authService.validateToken(token);  
+                            this.showProfile(userData);  
+                            return;  
+                        } catch (error) {  
+                            console.log("Token validation failed, trying refresh...");  
+                            // Token tidak valid, lanjut ke proses refresh  
+                        }  
+                    }  
+
+                    // 3. Coba refresh token (baik karena token invalid atau tidak ada)  
+                    try {  
+                        const newToken = await authService.refreshToken();  
+                        sessionStorage.setItem("accessToken", newToken);  
+                        
+                        // 4. Validate dengan token baru  
+                        const userData = await authService.validateToken(newToken);  
+                        this.showProfile(userData);  
+                    } catch (error) {  
+                        console.error("Refresh token failed:", error);  
+                        this.redirectToLogin();  
+                    }  
+                } catch (error) {  
+                    console.error("Profile initialization error:", error);  
+                    this.redirectToLogin();  
+                }  
+            }  
+
+            showProfile(userData) {  
+                document.getElementById("welcomeMessage").textContent = `Hello, ${userData.username}!`;  
+            }  
+
+            setupLogout() {  
+                document.querySelector("a[href='login.html']").addEventListener("click", async (e) => {  
+                    e.preventDefault();  
+                    try {  
+                        await authService.logout();  
+                    } catch (error) {  
+                        console.error("Logout failed:", error);  
+                        this.redirectToLogin();  
+                    }  
+                });  
+            }  
+
+            redirectToLogin() {  
+                sessionStorage.removeItem("accessToken");  
+                window.location.href = "login.html";  
+            }  
+        }  
+
+        // Initialize profile manager  
+        new ProfileManager();  
+    </script>  
+</body>  
+</html>
